@@ -545,9 +545,9 @@ const DocumentAnalysis = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-gray-700 leading-relaxed">
-                          {section.content}
-                        </p>
+                        <div className="text-gray-700 leading-relaxed">
+                          <FormattedMessage content={section.content} />
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
