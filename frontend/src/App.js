@@ -6,19 +6,23 @@ import Header from "./components/Header";
 import Dashboard from "./components/Dashboard";
 import DocumentAnalysis from "./components/DocumentAnalysis";
 import UploadDocument from "./components/UploadDocument";
+import LandingPage from "./components/LandingPage";
+import Footer from "./components/Footer";
 
 function App() {
   return (
-    <div className="App min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="App min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900">
       <BrowserRouter>
         <Header />
-        <main>
+        <main className="flex-1 flex flex-col">
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/upload" element={<UploadDocument />} />
             <Route path="/document/:id" element={<DocumentAnalysis />} />
           </Routes>
         </main>
+        <Footer />
         <Toaster />
       </BrowserRouter>
     </div>

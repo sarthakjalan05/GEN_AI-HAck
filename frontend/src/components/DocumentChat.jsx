@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Loader2, Send } from "lucide-react";
+// Check for browser support of SpeechRecognition
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition || null;
+import { Loader2, Send, Mic } from "lucide-react";
 import { chatAPI } from "../services/api";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
@@ -8,6 +11,83 @@ const DocumentChat = ({ documentId }) => {
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [listening, setListening] = useState(false);
+  const recognitionRef = useRef(null);
+  // Initialize SpeechRecognition instance
+  useEffect(() => {
+    if (SpeechRecognition && !recognitionRef.current) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setChatInput((prev) => {
+          const newInput = prev + (prev ? " " : "") + transcript;
+          // If user was not typing, send immediately
+          if (!prev.trim()) {
+            setTimeout(() => {
+              // Use setTimeout to ensure chatInput is updated before sending
+              handleSendMessageWithText(newInput);
+            }, 0);
+          }
+          return newInput;
+        });
+        setListening(false);
+      };
+      // Helper to send a message with provided text (used for voice input)
+      const handleSendMessageWithText = async (text) => {
+        if (!text.trim()) return;
+        setChatLoading(true);
+        try {
+          const response = await chatAPI.sendMessage(
+            documentId,
+            text,
+            sessionId
+          );
+          const userMessage = {
+            id: Date.now().toString(),
+            type: "user",
+            message: text,
+            timestamp: new Date().toISOString(),
+          };
+          setChatMessages((prev) => [...prev, userMessage, response]);
+          setChatInput("");
+        } catch (error) {
+          // Optionally handle error
+        } finally {
+          setChatLoading(false);
+        }
+      };
+      recognition.onerror = (event) => {
+        setListening(false);
+        // Optionally handle error
+      };
+      recognition.onend = () => {
+        setListening(false);
+      };
+      recognitionRef.current = recognition;
+    }
+  }, []);
+  // Start or stop listening for voice input
+  const handleMicClick = () => {
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current.stop();
+      setListening(false);
+    } else {
+      try {
+        recognitionRef.current.start();
+        setListening(true);
+      } catch (e) {
+        setListening(false);
+      }
+    }
+  };
   const [sessionId] = useState(() => {
     const key = `chat_session_${documentId}`;
     const existing = localStorage.getItem(key);
@@ -96,6 +176,21 @@ const DocumentChat = ({ documentId }) => {
           disabled={chatLoading}
           className="flex-1 rounded-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 focus:border-blue-500 dark:focus:border-blue-400 transition-all duration-300 bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm"
         />
+        {/* Microphone Button for Voice Input */}
+        <Button
+          type="button"
+          size="sm"
+          disabled={chatLoading || listening}
+          onClick={handleMicClick}
+          className={`rounded-full px-3 py-3 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 flex items-center justify-center ${
+            listening ? "animate-pulse" : ""
+          }`}
+          style={{ minWidth: 44 }}
+          aria-label={listening ? "Listening..." : "Start voice input"}
+        >
+          <Mic className="h-5 w-5" />
+          <span className="sr-only">Mic</span>
+        </Button>
         <Button
           size="sm"
           type="submit"
@@ -109,6 +204,11 @@ const DocumentChat = ({ documentId }) => {
           )}
         </Button>
       </form>
+      {listening && (
+        <div className="text-green-600 dark:text-green-400 mt-3 text-center animate-pulse">
+          Listening... Speak now.
+        </div>
+      )}
       {chatLoading && (
         <div className="text-gray-500 dark:text-gray-400 mt-3 text-center animate-pulse">
           Assistant is typing...
