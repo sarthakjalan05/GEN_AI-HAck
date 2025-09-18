@@ -9,10 +9,10 @@ import UploadDocument from "./components/UploadDocument";
 
 function App() {
   return (
-    <div className="App min-h-screen bg-gray-50">
+    <div className="App min-h-screen bg-gray-50 dark:bg-gray-900">
       <BrowserRouter>
         <Header />
-        <main className="container mx-auto px-4 py-8">
+        <main>
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/upload" element={<UploadDocument />} />

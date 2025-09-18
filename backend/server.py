@@ -82,6 +82,38 @@ async def analyze_document_task(document_id: str, text: str, document_type: str)
             {"id": document_id}, {"$set": {"status": "analyzed"}}
         )
 
+        # If the document has user_notes, create a first chat message and answer
+        document = await db.documents.find_one({"id": document_id})
+        notes = document.get("user_notes", "").strip() if document else ""
+        if notes:
+            import uuid
+            from models import ChatMessage
+
+            # Use a default session ID for notes-based chat so frontend can find it
+            notes_session_id = "notes_session"
+
+            # Create user message
+            user_message = ChatMessage(
+                document_id=document_id,
+                session_id=notes_session_id,
+                message_type="user",
+                message=notes,
+            )
+            await db.chat_messages.insert_one(user_message.dict())
+
+            # Generate LLM answer
+            from chat_engine import LegalDocumentAnalyzer
+
+            chat_engine = LegalDocumentAnalyzer()
+            ai_response_text = chat_engine.answer_question(text, [], notes)
+            ai_message = ChatMessage(
+                document_id=document_id,
+                session_id=notes_session_id,
+                message_type="assistant",
+                message=ai_response_text,
+            )
+            await db.chat_messages.insert_one(ai_message.dict())
+
         print(f"Analysis completed for document {document_id}")
     except Exception as e:
         print(f"Analysis failed for document {document_id}: {str(e)}")
@@ -352,9 +384,18 @@ async def send_chat_message(document_id: str, message_data: ChatMessageCreate):
 async def get_chat_history(document_id: str, session_id: Optional[str] = None):
     """Get chat history for a document"""
     try:
-        query = {"document_id": document_id}
+        # If session_id is provided, get messages for that session + notes session
+        # If no session_id, get all messages for the document
         if session_id:
-            query["session_id"] = session_id
+            query = {
+                "document_id": document_id,
+                "$or": [
+                    {"session_id": session_id},
+                    {"session_id": "notes_session"},  # Include notes-based messages
+                ],
+            }
+        else:
+            query = {"document_id": document_id}
 
         messages = await db.chat_messages.find(query).sort("timestamp", 1).to_list(1000)
 

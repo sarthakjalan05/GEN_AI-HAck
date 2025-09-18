@@ -83,6 +83,7 @@ class AnalysisEngine:
             summary = "Summary not available."
 
         # --- LLM-Generated Key Terms ---
+        key_terms_markdown = ""
         try:
             key_terms_prompt = (
                 "Extract and list the 3-5 most important legal terms or concepts from the following document. For each, provide:\n- term\n- definition (plain English)\n- importance (high, medium, low)\n- location (if possible)\nReturn as a JSON array of objects.\n\nDocument:\n"
@@ -97,10 +98,21 @@ class AnalysisEngine:
             from models import KeyTerm
 
             key_terms = [KeyTerm(**kt) for kt in key_terms_list]
+
+            # Generate markdown version for key terms
+            key_terms_markdown_prompt = (
+                "Extract and explain the 3-5 most important legal terms from the following document. "
+                "Format as markdown with headers, bullet points, and emphasis. Make it easy to read and understand.\n\nDocument:\n"
+                + text[:4000]
+            )
+            key_terms_markdown = self.llm.model.generate_content(
+                key_terms_markdown_prompt
+            ).text.strip()
         except Exception:
             key_terms = self._extract_key_terms(text)
 
         # --- LLM-Generated Red Flags/Risks ---
+        risks_markdown = ""
         try:
             risks_prompt = (
                 "Identify up to 3 key risks, red flags, or problematic clauses in the following document. For each, provide:\n- issue (short title)\n- explanation (plain English)\n- severity (high, medium, low)\nReturn as a JSON array of objects.\n\nDocument:\n"
@@ -113,6 +125,16 @@ class AnalysisEngine:
             from models import RedFlag
 
             red_flags = [RedFlag(**rf) for rf in risks_list]
+
+            # Generate markdown version for risks
+            risks_markdown_prompt = (
+                "Analyze and explain the key risks and red flags in the following legal document. "
+                "Format as markdown with clear headers, bullet points, and emphasis. Highlight severity levels and provide actionable advice.\n\nDocument:\n"
+                + text[:4000]
+            )
+            risks_markdown = self.llm.model.generate_content(
+                risks_markdown_prompt
+            ).text.strip()
         except Exception:
             red_flags = self._identify_red_flags(text)
 
@@ -139,6 +161,9 @@ class AnalysisEngine:
             key_terms=key_terms,
             red_flags=red_flags,
             simplified_sections=simplified_sections,
+            summary=summary,
+            key_terms_markdown=key_terms_markdown,
+            risks_markdown=risks_markdown,
         )
 
     def _calculate_readability_score(self, text: str) -> float:

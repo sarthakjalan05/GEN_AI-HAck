@@ -3,11 +3,13 @@ from typing import List, Optional
 from datetime import datetime
 import uuid
 
+
 # Document Models
 class DocumentCreate(BaseModel):
     name: str
     document_type: str
     notes: Optional[str] = ""
+
 
 class Document(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -21,6 +23,7 @@ class Document(BaseModel):
     file_size: int
     content_text: str = ""
 
+
 class DocumentResponse(BaseModel):
     id: str
     name: str
@@ -33,6 +36,7 @@ class DocumentResponse(BaseModel):
     summary: Optional[str] = ""
     complexity: Optional[str] = ""
 
+
 # Analysis Models
 class KeyTerm(BaseModel):
     term: str
@@ -40,15 +44,18 @@ class KeyTerm(BaseModel):
     importance: str  # high, medium, low
     location: str
 
+
 class RedFlag(BaseModel):
     issue: str
     explanation: str
     severity: str  # high, medium, low
 
+
 class SimplifiedSection(BaseModel):
     title: str
     content: str
     order: int = 0
+
 
 class DocumentAnalysis(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -65,6 +72,11 @@ class DocumentAnalysis(BaseModel):
     red_flags: List[RedFlag]
     simplified_sections: List[SimplifiedSection]
     analysis_date: datetime = Field(default_factory=datetime.utcnow)
+    # Add markdown fields for LLM-generated content
+    summary: Optional[str] = ""
+    key_terms_markdown: Optional[str] = ""
+    risks_markdown: Optional[str] = ""
+
 
 class AnalysisResponse(BaseModel):
     document_id: str
@@ -76,6 +88,7 @@ class AnalysisResponse(BaseModel):
     top_concerns: List[str]
     recommendations: List[str]
 
+
 # Chat Models
 class ChatMessage(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -85,9 +98,11 @@ class ChatMessage(BaseModel):
     message: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+
 class ChatMessageCreate(BaseModel):
     message: str
     session_id: Optional[str] = None
+
 
 class ChatResponse(BaseModel):
     id: str

@@ -55,7 +55,7 @@ const FormattedMessage = ({ content }) => {
   return (
     <div
       dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
-      className="formatted-message"
+      className="formatted-message text-gray-700 dark:text-gray-300 leading-relaxed"
     />
   );
 };
@@ -106,6 +106,9 @@ const DocumentAnalysis = () => {
               setAnalysis(analysisData);
               setIsPolling(false);
 
+              // Refetch chat history to get notes-based messages
+              fetchChatHistory();
+
               // Show success toast when analysis completes
               toast({
                 title: "Analysis Complete",
@@ -150,6 +153,8 @@ const DocumentAnalysis = () => {
         try {
           const analysisData = await api.documents.getAnalysis(id);
           setAnalysis(analysisData);
+          // Refetch chat history to get any notes-based messages
+          await fetchChatHistory();
         } catch (error) {
           console.log("Analysis not yet available");
         }
@@ -169,6 +174,7 @@ const DocumentAnalysis = () => {
   const fetchChatHistory = async () => {
     try {
       const chatData = await api.chat.getChatHistory(id, sessionId);
+      console.log("Fetched chat history:", chatData);
       setChatMessages(chatData);
     } catch (error) {
       console.log("No chat history available");
@@ -245,8 +251,10 @@ const DocumentAnalysis = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-        <span className="ml-2 text-gray-600">Loading document analysis...</span>
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
+        <span className="ml-2 text-gray-600 dark:text-gray-400">
+          Loading document analysis...
+        </span>
       </div>
     );
   }
@@ -254,11 +262,11 @@ const DocumentAnalysis = () => {
   if (!document) {
     return (
       <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <AlertCircle className="h-12 w-12 text-red-400 dark:text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
           Document not found
         </h3>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-400">
           The requested document could not be found.
         </p>
       </div>
@@ -270,8 +278,10 @@ const DocumentAnalysis = () => {
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold text-gray-900">{document.name}</h1>
-          <div className="flex items-center space-x-4 text-sm text-gray-600">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+            {document.name}
+          </h1>
+          <div className="flex items-center space-x-4 text-sm text-gray-600 dark:text-gray-400">
             <span>
               Uploaded {new Date(document.upload_date).toLocaleDateString()}
             </span>
@@ -312,7 +322,9 @@ const DocumentAnalysis = () => {
               <div className="flex items-center space-x-2">
                 <TrendingUp className="h-5 w-5 text-blue-600" />
                 <div>
-                  <p className="text-sm font-medium">Overall Score</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Overall Score
+                  </p>
                   <p className="text-2xl font-bold text-blue-600">
                     {analysis.overall_score}/10
                   </p>
@@ -326,7 +338,9 @@ const DocumentAnalysis = () => {
               <div className="flex items-center space-x-2">
                 <Eye className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="text-sm font-medium">Readability</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Readability
+                  </p>
                   <p className="text-2xl font-bold text-green-600">
                     {analysis.readability_score}/10
                   </p>
@@ -340,7 +354,9 @@ const DocumentAnalysis = () => {
               <div className="flex items-center space-x-2">
                 <CheckCircle2 className="h-5 w-5 text-purple-600" />
                 <div>
-                  <p className="text-sm font-medium">Fairness</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Fairness
+                  </p>
                   <p className="text-2xl font-bold text-purple-600">
                     {analysis.fairness_score}/10
                   </p>
@@ -354,7 +370,9 @@ const DocumentAnalysis = () => {
               <div className="flex items-center space-x-2">
                 <Clock className="h-5 w-5 text-orange-600" />
                 <div>
-                  <p className="text-sm font-medium">Read Time</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Read Time
+                  </p>
                   <p className="text-2xl font-bold text-orange-600">
                     {analysis.estimated_read_time.split(" ")[0]}
                     <span className="text-sm font-normal">min</span>
@@ -367,15 +385,15 @@ const DocumentAnalysis = () => {
       ) : (
         <Card>
           <CardContent className="p-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Analysis in Progress
             </h3>
-            <p className="text-gray-600">
+            <p className="text-gray-600 dark:text-gray-400">
               Your document is being analyzed. This usually takes a few minutes.
             </p>
             {isPolling && (
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                 Checking for updates every 3 seconds...
               </p>
             )}
@@ -403,15 +421,19 @@ const DocumentAnalysis = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <p className="text-gray-700 leading-relaxed">
-                    {document.summary ||
-                      "Document uploaded successfully. Analysis in progress..."}
-                  </p>
+                  {analysis?.summary ? (
+                    <FormattedMessage content={analysis.summary} />
+                  ) : (
+                    <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {document.summary ||
+                        "Document uploaded successfully. Analysis in progress..."}
+                    </p>
+                  )}
 
                   {analysis && (
                     <>
                       <div className="space-y-3">
-                        <h4 className="font-semibold text-gray-900">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                           Top Concerns:
                         </h4>
                         <ul className="space-y-2">
@@ -421,8 +443,8 @@ const DocumentAnalysis = () => {
                               className="flex items-start space-x-2"
                             >
                               <AlertTriangle className="h-4 w-4 text-orange-500 mt-1 flex-shrink-0" />
-                              <span className="text-sm text-gray-700">
-                                {concern}
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                <FormattedMessage content={concern} />
                               </span>
                             </li>
                           ))}
@@ -430,7 +452,7 @@ const DocumentAnalysis = () => {
                       </div>
 
                       <div className="space-y-3">
-                        <h4 className="font-semibold text-gray-900">
+                        <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                           Recommendations:
                         </h4>
                         <ul className="space-y-2">
@@ -440,8 +462,8 @@ const DocumentAnalysis = () => {
                               className="flex items-start space-x-2"
                             >
                               <CheckCircle2 className="h-4 w-4 text-green-500 mt-1 flex-shrink-0" />
-                              <span className="text-sm text-gray-700">
-                                {rec}
+                              <span className="text-sm text-gray-700 dark:text-gray-300">
+                                <FormattedMessage content={rec} />
                               </span>
                             </li>
                           ))}
@@ -454,7 +476,13 @@ const DocumentAnalysis = () => {
             </TabsContent>
 
             <TabsContent value="terms" className="space-y-4">
-              {analysis?.key_terms ? (
+              {analysis?.key_terms_markdown ? (
+                <Card>
+                  <CardContent className="p-4">
+                    <FormattedMessage content={analysis.key_terms_markdown} />
+                  </CardContent>
+                </Card>
+              ) : analysis?.key_terms ? (
                 <div className="space-y-4">
                   {analysis.key_terms.map((term, index) => (
                     <Card
@@ -465,7 +493,7 @@ const DocumentAnalysis = () => {
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-semibold text-gray-900">
+                          <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                             {term.term}
                           </h4>
                           <div className="flex items-center space-x-2">
@@ -475,13 +503,13 @@ const DocumentAnalysis = () => {
                             >
                               {term.importance} priority
                             </Badge>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
                               {term.location}
                             </span>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-700 leading-relaxed">
-                          {term.definition}
+                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                          <FormattedMessage content={term.definition} />
                         </p>
                       </CardContent>
                     </Card>
@@ -490,7 +518,7 @@ const DocumentAnalysis = () => {
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 dark:text-gray-400">
                       Key terms will appear here once analysis is complete.
                     </p>
                   </CardContent>
@@ -499,24 +527,30 @@ const DocumentAnalysis = () => {
             </TabsContent>
 
             <TabsContent value="risks" className="space-y-4">
-              {analysis?.red_flags ? (
+              {analysis?.risks_markdown ? (
+                <Card>
+                  <CardContent className="p-4">
+                    <FormattedMessage content={analysis.risks_markdown} />
+                  </CardContent>
+                </Card>
+              ) : analysis?.red_flags ? (
                 <div className="space-y-4">
                   {analysis.red_flags.map((flag, index) => (
                     <Card
                       key={index}
-                      className="border-l-4 border-red-200 bg-red-50"
+                      className="border-l-4 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20"
                     >
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
-                          <h4 className="font-semibold text-red-900">
+                          <h4 className="font-semibold text-red-900 dark:text-red-100">
                             {flag.issue}
                           </h4>
                           <Badge className={getRiskColor(flag.severity)}>
                             {flag.severity} risk
                           </Badge>
                         </div>
-                        <p className="text-sm text-red-800 leading-relaxed">
-                          {flag.explanation}
+                        <p className="text-sm text-red-800 dark:text-red-200 leading-relaxed">
+                          <FormattedMessage content={flag.explanation} />
                         </p>
                       </CardContent>
                     </Card>
@@ -525,7 +559,7 @@ const DocumentAnalysis = () => {
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 dark:text-gray-400">
                       Risk analysis will appear here once document analysis is
                       complete.
                     </p>
@@ -545,7 +579,7 @@ const DocumentAnalysis = () => {
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="text-gray-700 leading-relaxed">
+                        <div className="text-gray-700 dark:text-gray-300 leading-relaxed">
                           <FormattedMessage content={section.content} />
                         </div>
                       </CardContent>
@@ -555,7 +589,7 @@ const DocumentAnalysis = () => {
               ) : (
                 <Card>
                   <CardContent className="p-8 text-center">
-                    <p className="text-gray-600">
+                    <p className="text-gray-600 dark:text-gray-400">
                       Simplified explanations will appear here once analysis is
                       complete.
                     </p>
@@ -611,7 +645,7 @@ const DocumentAnalysis = () => {
                   ))}
                   {chatLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-gray-100 text-gray-900 p-3 rounded-lg text-sm flex items-center space-x-2">
+                      <div className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-3 rounded-lg text-sm flex items-center space-x-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span>Assistant is typing...</span>
                       </div>
