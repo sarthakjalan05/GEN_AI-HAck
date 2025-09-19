@@ -32,6 +32,37 @@ import {
 import api from "../services/api";
 import DocumentChat from "./DocumentChat";
 
+// Firestore imports
+import { db } from "../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+// A dummy auth hook to simulate getting a user ID for Firestore
+const useAuth = () => {
+  // In a real app, this would get the logged-in user from Firebase Auth context
+  const user = { uid: "test-user-id" }; 
+  return { user };
+};
+
+// Function to save data to Firestore
+const saveSummaryToFirestore = async (userId, documentId, summaryData) => {
+  try {
+    const docRef = await addDoc(collection(db, "summaries"), {
+      userId: userId,
+      documentId: documentId,
+      summary: summaryData.summary,
+      overall_score: summaryData.overall_score,
+      readability_score: summaryData.readability_score,
+      fairness_score: summaryData.fairness_score,
+      timestamp: serverTimestamp(),
+    });
+    console.log("Summary written with ID: ", docRef.id);
+    return { success: true, docId: docRef.id };
+  } catch (e) {
+    console.error("Error adding document: ", e);
+    return { success: false, error: e };
+  }
+};
+
 // Utility function to parse markdown-style formatting
 const parseMarkdown = (text) => {
   if (!text) return text;
@@ -70,6 +101,7 @@ const FormattedMessage = ({ content }) => {
 const DocumentAnalysis = () => {
   const { id } = useParams();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user from auth hook
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -120,6 +152,11 @@ const DocumentAnalysis = () => {
               setAnalysis(analysisData);
               setIsPolling(false);
 
+              // NEW: Save the summary to Firestore after analysis is complete
+              if (user && analysisData) {
+                await saveSummaryToFirestore(user.uid, id, analysisData);
+              }
+
               // Refetch chat history to get notes-based messages
               fetchChatHistory();
 
@@ -155,28 +192,6 @@ const DocumentAnalysis = () => {
       }
     };
   }, [document, analysis, id, toast]);
-
-  // Initialize SpeechRecognition instance once
-  useEffect(() => {
-    if (SpeechRecognition && !recognitionRef.current) {
-      const recognition = new SpeechRecognition();
-      recognition.lang = "en-US";
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-
-      recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        setChatInput((prev) => {
-          const newValue = prev ? `${prev} ${transcript}` : transcript;
-          return newValue;
-        });
-        setListening(false);
-      };
-      recognition.onerror = () => setListening(false);
-      recognition.onend = () => setListening(false);
-      recognitionRef.current = recognition;
-    }
-  }, [SpeechRecognition]);
 
   const fetchDocumentData = async () => {
     try {
@@ -258,23 +273,6 @@ const DocumentAnalysis = () => {
     }
   };
 
-  const handleMicClick = () => {
-    if (!SpeechRecognition) return; // Button will be disabled in this case
-    if (listening) {
-      try {
-        recognitionRef.current?.stop();
-      } catch {}
-      setListening(false);
-    } else {
-      try {
-        recognitionRef.current?.start();
-        setListening(true);
-      } catch {
-        setListening(false);
-      }
-    }
-  };
-
   const getRiskColor = (level) => {
     switch (level) {
       case "high":
@@ -304,7 +302,7 @@ const DocumentAnalysis = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500 mx-auto" />
         <span className="ml-2 text-gray-600 dark:text-gray-400">
           Loading document analysis...
         </span>
@@ -327,7 +325,7 @@ const DocumentAnalysis = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
@@ -340,9 +338,7 @@ const DocumentAnalysis = () => {
             </span>
             <span>•</span>
             <span>
-              {document.status === "analyzed"
-                ? "15 min read time"
-                : "Analysis in progress"}
+              {analysis?.estimated_read_time || "Analysis in progress"}
             </span>
             <span>•</span>
             <Badge className={getRiskColor(analysis?.risk_level || "medium")}>
@@ -360,7 +356,7 @@ const DocumentAnalysis = () => {
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={!analysis}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>

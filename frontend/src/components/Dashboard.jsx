@@ -17,6 +17,10 @@ import {
 } from "lucide-react";
 import api from "../services/api";
 
+// NEW: Firestore imports
+import { db } from "../firebase";
+import { doc, getDoc } from "firebase/firestore";
+
 const Dashboard = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +44,63 @@ const Dashboard = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  // NEW: Function to download summary from Firebase
+  const handleDownload = async (documentId, documentName) => {
+    try {
+      // Create a reference to the summary document in Firestore using the document ID
+      const summaryDocRef = doc(db, "summaries", documentId);
+      const summaryDoc = await getDoc(summaryDocRef);
+
+      if (!summaryDoc.exists()) {
+        toast({
+          title: "Download Failed",
+          description: "Summary not found in the database.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const summaryData = summaryDoc.data();
+      
+      let exportContent = `# Document Analysis Report\n\n`;
+      exportContent += `**Document:** ${documentName}\n`;
+      exportContent += `**Overall Score:** ${summaryData.overall_score}/10\n`;
+      exportContent += `**Readability:** ${summaryData.readability_score}/10\n`;
+      exportContent += `**Fairness:** ${summaryData.fairness_score}/10\n\n`;
+
+      if (summaryData.summary) {
+        exportContent += `## Summary\n`;
+        exportContent += `${summaryData.summary}\n\n`;
+      }
+
+      // Create a Blob from the content
+      const blob = new Blob([exportContent], { type: 'text/plain;charset=utf-8' });
+      const href = URL.createObjectURL(blob);
+      
+      // The fix is here: use window.document to access the global object
+      const link = window.document.createElement('a');
+      link.href = href;
+      link.download = `${documentName}_summary.md`;
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      URL.revokeObjectURL(href);
+
+      toast({
+        title: "Download Successful",
+        description: `Summary for '${documentName}' has been downloaded.`,
+      });
+
+    } catch (error) {
+      console.error("Error downloading summary:", error);
+      toast({
+        title: "Download Error",
+        description: "An unexpected error occurred during the download.",
+        variant: "destructive",
+      });
     }
   };
 
