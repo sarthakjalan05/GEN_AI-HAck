@@ -8,6 +8,8 @@ import DocumentAnalysis from "./components/DocumentAnalysis";
 import UploadDocument from "./components/UploadDocument";
 import LandingPage from "./components/LandingPage";
 import Footer from "./components/Footer";
+import LoginPage from "./components/LoginPage"; // Import the new Login Page
+import SignupPage from "./components/SignupPage"; // Import the new Signup Page
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/upload" element={<UploadDocument />} />
             <Route path="/document/:id" element={<DocumentAnalysis />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignupPage />} />
           </Routes>
         </main>
         <Footer />

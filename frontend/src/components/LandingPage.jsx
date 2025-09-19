@@ -1,95 +1,43 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Scale } from "lucide-react";
+import { MoveRight } from "lucide-react";
+import { Button } from "./ui/button";
+import { motion } from "framer-motion";
 
 const LandingPage = () => {
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    setIsVisible(true);
-    const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    // Trigger the animation after a short delay
+    const timer = setTimeout(() => {
+      setIsVisible(true);
+    }, 100);
+
+    // Cleanup the timer on unmount
+    return () => clearTimeout(timer);
   }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative overflow-hidden">
-      {/* Dynamic background with mouse interaction */}
-      <div
-        className="absolute inset-0 opacity-20 dark:opacity-30"
-        style={{
-          background: `radial-gradient(600px at ${mousePosition.x}px ${mousePosition.y}px, rgba(59, 130, 246, 0.1), transparent 80%)`,
-        }}
-      />
+      {/* Background blobs and shapes */}
+      <div className="absolute top-0 left-0 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob" />
+      <div className="absolute top-0 right-0 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-2000" />
+      <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-cyan-300 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-4000" />
 
-      {/* Animated background particles */}
-      <div className="absolute inset-0 overflow-hidden">
-        {[...Array(50)].map((_, i) => (
-          <div
-            key={i}
-            className="absolute animate-float"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 5}s`,
-              animationDuration: `${3 + Math.random() * 4}s`,
-            }}
-          >
-            <div className="w-1 h-1 bg-blue-400 dark:bg-blue-300 rounded-full opacity-40 dark:opacity-60" />
-          </div>
-        ))}
-      </div>
-
-      {/* Hero Section */}
       <section className="min-h-screen flex items-center justify-center px-4 relative z-10">
         <div
           className={`text-center max-w-6xl mx-auto transition-all duration-1000 ${
             isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"
           }`}
         >
-          {/* Logo with glow effect */}
-          <div className="relative mb-8">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-500 rounded-full blur-3xl opacity-20 dark:opacity-30 scale-150" />
-            <div className="relative w-32 h-32 mx-auto bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-xl border border-white/10">
-              <Scale className="h-16 w-16 text-white" />
-            </div>
-          </div>
-
-          {/* Main title with typewriter effect */}
-          <h1 className="text-6xl md:text-8xl font-black mb-6">
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 bg-clip-text text-transparent animate-gradient">
-              Legal
-            </span>
-            <span className="text-gray-800 dark:text-white">Clear</span>
-          </h1>
-
-          {/* Subtitle with fade-in animation */}
-          <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-4 max-w-3xl mx-auto leading-relaxed">
-            Transform complex legal documents into clear insights with the power
-            of
-            <span className="text-gradient bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent font-semibold">
-              {" "}
-              AI
-            </span>
-          </p>
-
-          {/* Feature highlights */}
-          <div className="flex flex-wrap justify-center gap-6 mb-12 text-gray-500 dark:text-gray-400">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              <span>AI Contract Analysis</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />
-              <span>Smart Q&A Chatbot</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 bg-indigo-400 rounded-full animate-pulse" />
-              <span>Voice Commands</span>
-            </div>
+          {/* Logo and Title */}
+          <div className="mb-8">
+            <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-800 dark:from-blue-400 dark:to-indigo-600 animate-pulse">
+              LegalClear
+            </h1>
+            <p className="mt-4 text-2xl text-gray-700 dark:text-gray-300">
+              Your Legal Document Analysis Partner
+            </p>
           </div>
 
           {/* CTA Buttons with enhanced styling */}
@@ -108,104 +56,139 @@ const LandingPage = () => {
             </Link>
           </div>
 
-          {/* Demo link */}
           <div className="mt-8">
-            <Link
-              to="/dashboard"
-              className="text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300 underline decoration-blue-500 underline-offset-4"
-            >
-              Try Demo Without Signing Up →
+            <Link to="/demo">
+              <Button
+                variant="link"
+                className="text-lg text-gray-600 dark:text-gray-400 hover:underline"
+              >
+                Explore a Demo <MoveRight className="ml-2 h-5 w-5" />
+              </Button>
             </Link>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-20 px-4 relative z-10">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-bold text-center text-gray-800 dark:text-white mb-16">
-            Why Choose{" "}
-            <span className="text-gradient bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              LegalClear
-            </span>
-            ?
+      <section className="bg-white/70 dark:bg-gray-800/70 py-20 backdrop-blur-md relative z-10">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center text-gray-800 dark:text-white mb-12">
+            Features
           </h2>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                icon: "🤖",
-                title: "AI-Powered Analysis",
-                description:
-                  "Advanced AI understands complex legal language and provides clear summaries",
-              },
-              {
-                icon: "💬",
-                title: "Interactive Chat",
-                description:
-                  "Ask questions about your documents and get instant, accurate answers",
-              },
-              {
-                icon: "🎤",
-                title: "Voice Commands",
-                description:
-                  "Use voice input for hands-free document interaction and queries",
-              },
-            ].map((feature, index) => (
-              <div
-                key={index}
-                className="group relative p-8 bg-white/80 dark:bg-white/5 backdrop-blur-sm rounded-2xl border border-gray-200 dark:border-white/10 hover:border-blue-300 dark:hover:border-blue-500/50 transition-all duration-300 hover:transform hover:scale-105 shadow-lg hover:shadow-xl"
-              >
-                <div className="text-4xl mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-bold text-gray-800 dark:text-white mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-                  {feature.description}
-                </p>
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-indigo-500/5 dark:from-blue-600/10 dark:to-indigo-600/10 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <motion.div
+              className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6 }}
+            >
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Quick Summaries
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Get instant, concise summaries of long legal documents to grasp
+                key points quickly.
+              </p>
+            </motion.div>
+            <motion.div
+              className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Q&A Chatbot
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Interact with your documents using a natural language chatbot to
+                find specific information.
+              </p>
+            </motion.div>
+            <motion.div
+              className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300"
+              initial={{ opacity: 0, y: 50 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                Smart Analysis
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Identify critical clauses, potential risks, and key terms
+                automatically.
+              </p>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-20 px-4 relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {[
-              { number: "99%", label: "Accuracy" },
-              { number: "50%", label: "Time Saved" },
-              { number: "24/7", label: "Available" },
-              { number: "AI", label: "Powered" },
-            ].map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-gradient bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                  {stat.number}
-                </div>
-                <div className="text-gray-500 dark:text-gray-400 mt-2">
-                  {stat.label}
-                </div>
-              </div>
-            ))}
+      <section className="py-20 bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-purple-900 dark:to-violet-900 relative z-10">
+        <div className="container mx-auto px-4">
+          <h2 className="text-4xl font-bold text-center text-gray-800 dark:text-white mb-12">
+            Our Impact
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.5 }}
+            >
+              <h3 className="text-5xl font-extrabold text-blue-600 dark:text-blue-400">
+                95%
+              </h3>
+              <p className="mt-2 text-gray-700 dark:text-gray-300">
+                Accuracy in identifying key clauses
+              </p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <h3 className="text-5xl font-extrabold text-purple-600 dark:text-purple-400">
+                70%
+              </h3>
+              <p className="mt-2 text-gray-700 dark:text-gray-300">
+                Reduction in document review time
+              </p>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <h3 className="text-5xl font-extrabold text-cyan-600 dark:text-cyan-400">
+                24/7
+              </h3>
+              <p className="mt-2 text-gray-700 dark:text-gray-300">
+                Access to AI insights
+              </p>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-20 px-4 text-center relative z-10">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white mb-6">
-            Ready to revolutionize your legal workflow?
+      {/* Final Call to Action Section */}
+      <section className="py-20 relative z-10">
+        <div className="container mx-auto px-4 text-center">
+          <h2 className="text-4xl font-bold text-gray-800 dark:text-white mb-4">
+            Ready to Streamline your Legal Workflow?
           </h2>
-          <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-            Join thousands of professionals who trust LegalClear for their
-            document analysis needs.
+          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
+            Get started today and revolutionize the way you handle legal
+            documents.
           </p>
           <Link to="/signup">
-            <button className="px-16 py-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-cyan-600 text-white font-bold text-xl rounded-full shadow-2xl hover:scale-105 transition-all duration-300 hover:shadow-blue-500/50">
-              Start Your Journey
+            <button className="group relative px-12 py-4 bg-gradient-to-r from-green-500 to-lime-500 text-white font-bold text-lg rounded-full overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25">
+              <span className="relative z-10">Sign Up Now</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-lime-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
           </Link>
         </div>
