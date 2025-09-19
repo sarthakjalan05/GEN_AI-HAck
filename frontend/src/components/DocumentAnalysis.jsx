@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import {
   Card,
@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   MessageCircle,
   Send,
+  Mic,
   Download,
   Bookmark,
   Share2,
@@ -55,7 +56,13 @@ const FormattedMessage = ({ content }) => {
   return (
     <div
       dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
-      className="formatted-message text-gray-700 dark:text-gray-300 leading-relaxed"
+      className="formatted-message text-gray-700 dark:text-white leading-relaxed"
+      style={{
+        background: "none",
+        color: "inherit",
+        WebkitTextStroke: "0.2px",
+        textShadow: "0 1px 2px rgba(0,0,0,0.08)",
+      }}
     />
   );
 };
@@ -66,10 +73,17 @@ const DocumentAnalysis = () => {
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
+  const [listening, setListening] = useState(false);
   const [document, setDocument] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
+  // Speech recognition support detection (guard for SSR)
+  const SpeechRecognition =
+    typeof window !== "undefined"
+      ? window.SpeechRecognition || window.webkitSpeechRecognition || null
+      : null;
+  const recognitionRef = useRef(null);
 
   // Generate session ID for chat
   const [sessionId] = useState(() => {
@@ -141,6 +155,28 @@ const DocumentAnalysis = () => {
       }
     };
   }, [document, analysis, id, toast]);
+
+  // Initialize SpeechRecognition instance once
+  useEffect(() => {
+    if (SpeechRecognition && !recognitionRef.current) {
+      const recognition = new SpeechRecognition();
+      recognition.lang = "en-US";
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        setChatInput((prev) => {
+          const newValue = prev ? `${prev} ${transcript}` : transcript;
+          return newValue;
+        });
+        setListening(false);
+      };
+      recognition.onerror = () => setListening(false);
+      recognition.onend = () => setListening(false);
+      recognitionRef.current = recognition;
+    }
+  }, [SpeechRecognition]);
 
   const fetchDocumentData = async () => {
     try {
@@ -219,6 +255,23 @@ const DocumentAnalysis = () => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  const handleMicClick = () => {
+    if (!SpeechRecognition) return; // Button will be disabled in this case
+    if (listening) {
+      try {
+        recognitionRef.current?.stop();
+      } catch {}
+      setListening(false);
+    } else {
+      try {
+        recognitionRef.current?.start();
+        setListening(true);
+      } catch {
+        setListening(false);
+      }
     }
   };
 
@@ -477,8 +530,8 @@ const DocumentAnalysis = () => {
 
             <TabsContent value="terms" className="space-y-4">
               {analysis?.key_terms_markdown ? (
-                <Card>
-                  <CardContent className="p-4">
+                <Card className="bg-white dark:bg-gray-800/95">
+                  <CardContent className="p-4 text-gray-700 dark:text-white">
                     <FormattedMessage content={analysis.key_terms_markdown} />
                   </CardContent>
                 </Card>
@@ -489,9 +542,9 @@ const DocumentAnalysis = () => {
                       key={index}
                       className={`border-l-4 ${getImportanceColor(
                         term.importance
-                      )}`}
+                      )} bg-white dark:bg-gray-800/95`}
                     >
-                      <CardContent className="p-4">
+                      <CardContent className="p-4 text-gray-700 dark:text-white">
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                             {term.term}
@@ -508,9 +561,9 @@ const DocumentAnalysis = () => {
                             </span>
                           </div>
                         </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                        <div className="text-sm text-gray-700 dark:text-white leading-relaxed">
                           <FormattedMessage content={term.definition} />
-                        </p>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
@@ -658,11 +711,48 @@ const DocumentAnalysis = () => {
                 <Input
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask about your document..."
+                  placeholder={
+                    listening
+                      ? "Legal assistant is listening to you..."
+                      : "Ask about your document..."
+                  }
                   onKeyPress={handleKeyPress}
                   disabled={chatLoading}
                   className="flex-1"
                 />
+                {/* Mic button for voice input */}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleMicClick}
+                  disabled={chatLoading || !SpeechRecognition}
+                  className={`inline-flex items-center justify-center rounded-md px-3 shadow border ${
+                    !SpeechRecognition
+                      ? "bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500 cursor-not-allowed"
+                      : listening
+                      ? "border-red-300 bg-red-50 text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300 animate-pulse"
+                      : "border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
+                  }`}
+                  aria-label={
+                    listening ? "Stop listening" : "Start voice input"
+                  }
+                  title={
+                    !SpeechRecognition
+                      ? "Voice input not supported in this browser"
+                      : listening
+                      ? "Click to stop listening"
+                      : "Click to start voice input"
+                  }
+                >
+                  <Mic
+                    className={`h-4 w-4 ${
+                      listening
+                        ? "text-red-600 dark:text-red-300"
+                        : "text-gray-700 dark:text-gray-200"
+                    }`}
+                  />
+                </Button>
                 <Button
                   size="sm"
                   onClick={handleSendMessage}
@@ -675,6 +765,11 @@ const DocumentAnalysis = () => {
                   )}
                 </Button>
               </div>
+              {!SpeechRecognition && (
+                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 border border-yellow-300 dark:border-yellow-800 rounded px-2 py-1 mt-2">
+                  Voice input is not supported in this browser.
+                </div>
+              )}
             </CardContent>
           </Card>
 

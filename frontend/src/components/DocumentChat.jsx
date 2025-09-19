@@ -152,7 +152,7 @@ const DocumentChat = ({ documentId }) => {
               className={`max-w-[80%] p-3 rounded-2xl text-sm break-words whitespace-pre-line shadow-md transition-all duration-300 hover:shadow-lg ${
                 msg.type === "user"
                   ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-                  : "bg-white/80 dark:bg-gray-700/80 text-gray-900 dark:text-gray-100 border border-gray-200/50 dark:border-gray-600/50"
+                  : "bg-white/80 dark:bg-gray-800/95 text-gray-900 dark:text-white border border-gray-200/50 dark:border-gray-600/50"
               }`}
               style={{ wordBreak: "break-word", overflowWrap: "break-word" }}
             >
@@ -162,6 +162,11 @@ const DocumentChat = ({ documentId }) => {
         ))}
         <div ref={chatEndRef} />
       </div>
+      {!SpeechRecognition && (
+        <div className="w-full mb-3 p-3 rounded-lg bg-yellow-100 text-yellow-900 text-center font-semibold border border-yellow-300 dark:bg-yellow-900/40 dark:text-yellow-200 dark:border-yellow-700">
+          Voice input is not supported in this browser.
+        </div>
+      )}
       <form
         onSubmit={(e) => {
           e.preventDefault();

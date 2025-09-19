@@ -81,7 +81,7 @@ const Dashboard = () => {
   return (
     <div className="w-full min-h-[calc(100vh-4rem)] bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-gray-900 dark:via-purple-900 dark:to-violet-900 transition-all duration-500">
       {/* Hero Section */}
-      <section className="relative text-center space-y-6 pt-24 pb-20 px-4 overflow-hidden">
+      <section className="relative text-center space-y-6 pt-24 pb-20 px-4 overflow-x-hidden overflow-y-visible">
         {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-400 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
@@ -93,7 +93,7 @@ const Dashboard = () => {
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-sm font-medium mb-6">
             🚀 AI-Powered Legal Analysis
           </div>
-          <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 mb-6 tracking-tight leading-[1.1] py-2">
+          <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 mb-6 tracking-tight leading-[1.15] md:leading-[1.15] pb-1 md:pb-2">
             Demystify Legal Documents
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed mb-8">

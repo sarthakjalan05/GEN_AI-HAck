@@ -18,7 +18,7 @@ const LandingPage = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 relative overflow-x-hidden overflow-y-visible">
       {/* Background blobs and shapes */}
       <div className="absolute top-0 left-0 w-80 h-80 bg-blue-300 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob" />
       <div className="absolute top-0 right-0 w-80 h-80 bg-purple-300 rounded-full mix-blend-multiply filter blur-2xl opacity-30 animate-blob animation-delay-2000" />
@@ -32,7 +32,7 @@ const LandingPage = () => {
         >
           {/* Logo and Title */}
           <div className="mb-8">
-            <h1 className="text-6xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-800 dark:from-blue-400 dark:to-indigo-600 animate-pulse">
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold leading-[1.15] md:leading-[1.15] tracking-tight whitespace-nowrap pb-1 md:pb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-800 dark:from-blue-400 dark:to-indigo-600 animate-pulse">
               LegalClear
             </h1>
             <p className="mt-4 text-2xl text-gray-700 dark:text-gray-300">

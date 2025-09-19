@@ -91,6 +91,11 @@ class LegalDocumentAnalyzer:
         )
         prompt = f"""
         You are a legal contract analysis assistant. Use the following document and chat history to answer the user's question.
+        
+        - If the user asks about a legal term, always provide a clear definition and explain its meaning in simple language.
+        - If the user asks about a legal concept or clause, explain it in plain English and provide context or examples if possible.
+        - If the user asks about the document, summarize relevant legal sections and explain what they mean.
+        
         Document:
         """
         prompt += document_text[:4000]  # Cap context for LLM
