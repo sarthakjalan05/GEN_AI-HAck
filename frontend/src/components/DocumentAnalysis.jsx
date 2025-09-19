@@ -31,6 +31,37 @@ import {
 import api from "../services/api";
 import DocumentChat from "./DocumentChat";
 
+// Firestore imports
+import { db } from "../firebase";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+
+// A dummy auth hook to simulate getting a user ID for Firestore
+const useAuth = () => {
+  // In a real app, this would get the logged-in user from Firebase Auth context
+  const user = { uid: "test-user-id" }; 
+  return { user };
+};
+
+// Function to save data to Firestore
+const saveSummaryToFirestore = async (userId, documentId, summaryData) => {
+  try {
+    const docRef = await addDoc(collection(db, "summaries"), {
+      userId: userId,
+      documentId: documentId,
+      summary: summaryData.summary,
+      overall_score: summaryData.overall_score,
+      readability_score: summaryData.readability_score,
+      fairness_score: summaryData.fairness_score,
+      timestamp: serverTimestamp(),
+    });
+    console.log("Summary written with ID: ", docRef.id);
+    return { success: true, docId: docRef.id };
+  } catch (e) {
+    console.error("Error adding document: ", e);
+    return { success: false, error: e };
+  }
+};
+
 // Utility function to parse markdown-style formatting
 const parseMarkdown = (text) => {
   if (!text) return text;
@@ -63,6 +94,7 @@ const FormattedMessage = ({ content }) => {
 const DocumentAnalysis = () => {
   const { id } = useParams();
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user from auth hook
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -106,6 +138,11 @@ const DocumentAnalysis = () => {
               setAnalysis(analysisData);
               setIsPolling(false);
 
+              // NEW: Save the summary to Firestore after analysis is complete
+              if (user && analysisData) {
+                await saveSummaryToFirestore(user.uid, id, analysisData);
+              }
+
               // Refetch chat history to get notes-based messages
               fetchChatHistory();
 
@@ -140,7 +177,7 @@ const DocumentAnalysis = () => {
         clearInterval(pollInterval);
       }
     };
-  }, [document, analysis, id, toast]);
+  }, [document, analysis, id, toast, user]);
 
   const fetchDocumentData = async () => {
     try {
@@ -222,6 +259,80 @@ const DocumentAnalysis = () => {
     }
   };
 
+  // Corrected function for export
+  const handleExport = () => {
+    if (!analysis) {
+      toast({
+        title: "Analysis Not Ready",
+        description: "Please wait for the analysis to complete before exporting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Combine all relevant analysis data into a formatted string
+    let exportContent = `# Document Analysis Report\n\n`;
+    exportContent += `**Document:** ${document.name}\n`;
+    exportContent += `**Overall Score:** ${analysis.overall_score}/10\n`;
+    exportContent += `**Readability:** ${analysis.readability_score}/10\n`;
+    exportContent += `**Fairness:** ${analysis.fairness_score}/10\n`;
+    exportContent += `**Risk Level:** ${analysis.risk_level}\n\n`;
+
+    // Add Summary
+    exportContent += `## Summary\n`;
+    exportContent += `${analysis.summary}\n\n`;
+
+    // Add Top Concerns
+    if (analysis.top_concerns && analysis.top_concerns.length > 0) {
+      exportContent += `## Top Concerns\n`;
+      analysis.top_concerns.forEach((concern) => {
+        exportContent += `* ${concern}\n`;
+      });
+      exportContent += "\n";
+    }
+
+    // Add Recommendations
+    if (analysis.recommendations && analysis.recommendations.length > 0) {
+      exportContent += `## Recommendations\n`;
+      analysis.recommendations.forEach((rec) => {
+        exportContent += `* ${rec}\n`;
+      });
+      exportContent += "\n";
+    }
+
+    // Add Key Terms
+    if (analysis.key_terms_markdown) {
+      exportContent += `## Key Terms\n`;
+      exportContent += `${analysis.key_terms_markdown}\n\n`;
+    }
+
+    // Add Risks
+    if (analysis.risks_markdown) {
+      exportContent += `## Risks\n`;
+      exportContent += `${analysis.risks_markdown}\n\n`;
+    }
+
+    // Create a Blob from the content
+    const blob = new Blob([exportContent], { type: 'text/plain;charset=utf-8' });
+    const href = URL.createObjectURL(blob);
+
+    // Create and click a temporary link to download the file
+    const link = window.document.createElement('a');
+    link.href = href;
+    link.download = `${document.name}_analysis.md`;
+    window.document.body.appendChild(link);
+    link.click();
+
+    // Clean up the temporary link and URL
+    window.document.body.removeChild(link);
+    URL.revokeObjectURL(href);
+
+    toast({
+      title: "Export Successful",
+      description: "Analysis summary downloaded to your machine.",
+    });
+  };
+
   const getRiskColor = (level) => {
     switch (level) {
       case "high":
@@ -251,7 +362,7 @@ const DocumentAnalysis = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-gray-400 dark:text-gray-500 mx-auto" />
         <span className="ml-2 text-gray-600 dark:text-gray-400">
           Loading document analysis...
         </span>
@@ -274,7 +385,7 @@ const DocumentAnalysis = () => {
   }
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 p-6">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="space-y-2">
@@ -287,9 +398,7 @@ const DocumentAnalysis = () => {
             </span>
             <span>•</span>
             <span>
-              {document.status === "analyzed"
-                ? "15 min read time"
-                : "Analysis in progress"}
+              {analysis?.estimated_read_time || "Analysis in progress"}
             </span>
             <span>•</span>
             <Badge className={getRiskColor(analysis?.risk_level || "medium")}>
@@ -307,7 +416,7 @@ const DocumentAnalysis = () => {
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={!analysis}>
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
