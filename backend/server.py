@@ -9,7 +9,6 @@ from fastapi import (
 )
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
 import logging
 from pathlib import Path
@@ -17,6 +16,8 @@ from typing import List, Optional
 import uuid
 from datetime import datetime
 import asyncio
+import firebase_admin
+from firebase_admin import credentials, firestore
 
 # Import our custom modules
 from models import (
@@ -35,10 +36,17 @@ from analysis_engine import AnalysisEngine
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-# MongoDB connection
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+# Firebase Admin / Firestore initialization
+cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+if not firebase_admin._apps:
+    if cred_path and os.path.exists(cred_path):
+        cred = credentials.Certificate(cred_path)
+        firebase_admin.initialize_app(cred)
+    else:
+        # Attempt to initialize with default credentials (ADC)
+        firebase_admin.initialize_app()
+
+fs = firestore.client()
 
 # Initialize processors
 doc_processor = DocumentProcessor()
@@ -51,12 +59,21 @@ app = FastAPI(title="LegalClear API", version="1.0.0")
 api_router = APIRouter(prefix="/api")
 
 
-# Helper function to convert MongoDB documents
-def convert_mongo_document(doc):
-    if doc and "_id" in doc:
-        doc["id"] = str(doc["_id"])
-        del doc["_id"]
-    return doc
+# Firestore helpers
+def fs_set(collection: str, doc_id: str, data: dict):
+    fs.collection(collection).document(doc_id).set(data)
+
+
+def fs_update(collection: str, doc_id: str, data: dict):
+    fs.collection(collection).document(doc_id).update(data)
+
+
+def fs_get_doc(collection: str, doc_id: str):
+    return fs.collection(collection).document(doc_id).get()
+
+
+def fs_delete(collection: str, doc_id: str):
+    fs.collection(collection).document(doc_id).delete()
 
 
 # Background task for document analysis
@@ -64,9 +81,7 @@ async def analyze_document_task(document_id: str, text: str, document_type: str)
     """Background task to analyze document"""
     try:
         # Update status to analyzing
-        await db.documents.update_one(
-            {"id": document_id}, {"$set": {"status": "analyzing"}}
-        )
+        fs_update("documents", document_id, {"status": "analyzing"})
 
         # Simulate some processing time
         await asyncio.sleep(2)
@@ -74,16 +89,15 @@ async def analyze_document_task(document_id: str, text: str, document_type: str)
         # Perform analysis
         analysis = analysis_engine.analyze_document(text, document_type, document_id)
 
-        # Save analysis to database
-        await db.analyses.insert_one(analysis.dict())
+        # Save analysis to Firestore
+        fs_set("analyses", analysis.id, analysis.dict())
 
         # Update document status
-        await db.documents.update_one(
-            {"id": document_id}, {"$set": {"status": "analyzed"}}
-        )
+        fs_update("documents", document_id, {"status": "analyzed"})
 
         # If the document has user_notes, create a first chat message and answer
-        document = await db.documents.find_one({"id": document_id})
+        document_snap = fs_get_doc("documents", document_id)
+        document = document_snap.to_dict() if document_snap.exists else None
         notes = document.get("user_notes", "").strip() if document else ""
         if notes:
             import uuid
@@ -99,7 +113,7 @@ async def analyze_document_task(document_id: str, text: str, document_type: str)
                 message_type="user",
                 message=notes,
             )
-            await db.chat_messages.insert_one(user_message.dict())
+            fs_set("chat_messages", user_message.id, user_message.dict())
 
             # Generate LLM answer
             from chat_engine import LegalDocumentAnalyzer
@@ -112,14 +126,12 @@ async def analyze_document_task(document_id: str, text: str, document_type: str)
                 message_type="assistant",
                 message=ai_response_text,
             )
-            await db.chat_messages.insert_one(ai_message.dict())
+            fs_set("chat_messages", ai_message.id, ai_message.dict())
 
         print(f"Analysis completed for document {document_id}")
     except Exception as e:
         print(f"Analysis failed for document {document_id}: {str(e)}")
-        await db.documents.update_one(
-            {"id": document_id}, {"$set": {"status": "error"}}
-        )
+        fs_update("documents", document_id, {"status": "error"})
 
 
 # Routes
@@ -178,8 +190,8 @@ async def upload_document(
             status="uploaded",
         )
 
-        # Save to database
-        await db.documents.insert_one(document.dict())
+        # Save to Firestore (use our UUID as the document ID)
+        fs_set("documents", document.id, document.dict())
 
         # Start background analysis
         background_tasks.add_task(
@@ -200,13 +212,10 @@ async def upload_document(
 async def get_documents():
     """Get all documents"""
     try:
-        documents = await db.documents.find().to_list(1000)
-        result = []
-
-        for doc in documents:
-            # Convert MongoDB document
-            doc = convert_mongo_document(doc)
-
+        docs_stream = fs.collection("documents").stream()
+        result: List[DocumentResponse] = []
+        for snap in docs_stream:
+            doc = snap.to_dict() or {}
             # Add summary and complexity from processor
             if doc.get("content_text"):
                 complexity = doc_processor.analyze_complexity(doc["content_text"])
@@ -218,7 +227,16 @@ async def get_documents():
                 summary = "Document uploaded successfully. Analysis pending."
 
             doc_response = DocumentResponse(
-                **doc, summary=summary, complexity=complexity
+                id=doc.get("id", snap.id),
+                name=doc.get("name", ""),
+                original_filename=doc.get("original_filename", ""),
+                document_type=doc.get("document_type", ""),
+                upload_date=doc.get("upload_date", datetime.utcnow()),
+                status=doc.get("status", "uploaded"),
+                user_notes=doc.get("user_notes", ""),
+                file_size=doc.get("file_size", 0),
+                summary=summary,
+                complexity=complexity,
             )
             result.append(doc_response)
 
@@ -234,16 +252,22 @@ async def get_document(document_id: str):
     """Get a specific document with analysis if available"""
     try:
         # Find document
-        document = await db.documents.find_one({"id": document_id})
-        if not document:
+        snap = fs_get_doc("documents", document_id)
+        if not snap.exists:
             raise HTTPException(status_code=404, detail="Document not found")
-
-        document = convert_mongo_document(document)
+        document = snap.to_dict() or {}
 
         # Find analysis
-        analysis = await db.analyses.find_one({"document_id": document_id})
-        if analysis:
-            analysis = convert_mongo_document(analysis)
+        analysis = None
+        analysis_stream = (
+            fs.collection("analyses")
+            .where("document_id", "==", document_id)
+            .limit(1)
+            .stream()
+        )
+        for a in analysis_stream:
+            analysis = a.to_dict() or None
+            break
 
         # Add summary and complexity
         if document.get("content_text"):
@@ -273,11 +297,20 @@ async def get_document(document_id: str):
 async def get_analysis(document_id: str):
     """Get analysis for a specific document"""
     try:
-        analysis = await db.analyses.find_one({"document_id": document_id})
+        analysis = None
+        analysis_stream = (
+            fs.collection("analyses")
+            .where("document_id", "==", document_id)
+            .limit(1)
+            .stream()
+        )
+        for a in analysis_stream:
+            analysis = a.to_dict() or None
+            break
         if not analysis:
             raise HTTPException(status_code=404, detail="Analysis not found")
 
-        return convert_mongo_document(analysis)
+        return analysis
     except HTTPException:
         raise
     except Exception as e:
@@ -291,15 +324,24 @@ async def delete_document(document_id: str):
     """Delete a document and its analysis"""
     try:
         # Delete document
-        result = await db.documents.delete_one({"id": document_id})
-        if result.deleted_count == 0:
+        snap = fs_get_doc("documents", document_id)
+        if not snap.exists:
             raise HTTPException(status_code=404, detail="Document not found")
+        fs_delete("documents", document_id)
 
-        # Delete associated analysis
-        await db.analyses.delete_many({"document_id": document_id})
+        # Delete associated analyses
+        for a in (
+            fs.collection("analyses").where("document_id", "==", document_id).stream()
+        ):
+            fs_delete("analyses", a.id)
 
         # Delete chat messages
-        await db.chat_messages.delete_many({"document_id": document_id})
+        for m in (
+            fs.collection("chat_messages")
+            .where("document_id", "==", document_id)
+            .stream()
+        ):
+            fs_delete("chat_messages", m.id)
 
         return {"success": True, "message": "Document deleted successfully"}
     except HTTPException:
@@ -321,9 +363,10 @@ async def send_chat_message(document_id: str, message_data: ChatMessageCreate):
     """Send a chat message and get AI response"""
     try:
         # Verify document exists
-        document = await db.documents.find_one({"id": document_id})
-        if not document:
+        doc_snap = fs_get_doc("documents", document_id)
+        if not doc_snap.exists:
             raise HTTPException(status_code=404, detail="Document not found")
+        document = doc_snap.to_dict() or {}
 
         # Generate session ID if not provided
         session_id = message_data.session_id or str(uuid.uuid4())
@@ -335,13 +378,18 @@ async def send_chat_message(document_id: str, message_data: ChatMessageCreate):
             message_type="user",
             message=message_data.message,
         )
-        await db.chat_messages.insert_one(user_message.dict())
+        fs_set("chat_messages", user_message.id, user_message.dict())
 
         # Fetch recent chat history for context
-        chat_history_cursor = db.chat_messages.find(
-            {"document_id": document_id, "session_id": session_id}
-        ).sort("timestamp", 1)
-        chat_history = await chat_history_cursor.to_list(20)
+        chat_history = []
+        for msg in (
+            fs.collection("chat_messages")
+            .where("document_id", "==", document_id)
+            .where("session_id", "==", session_id)
+            .stream()
+        ):
+            chat_history.append(msg.to_dict())
+        chat_history.sort(key=lambda m: m.get("timestamp"))
 
         # Get document text
         document_text = document.get("content_text", "")
@@ -366,7 +414,7 @@ async def send_chat_message(document_id: str, message_data: ChatMessageCreate):
             message_type="assistant",
             message=ai_response_text,
         )
-        await db.chat_messages.insert_one(ai_message.dict())
+        fs_set("chat_messages", ai_message.id, ai_message.dict())
 
         return ChatResponse(
             id=ai_message.id,
@@ -384,30 +432,39 @@ async def send_chat_message(document_id: str, message_data: ChatMessageCreate):
 async def get_chat_history(document_id: str, session_id: Optional[str] = None):
     """Get chat history for a document"""
     try:
-        # If session_id is provided, get messages for that session + notes session
-        # If no session_id, get all messages for the document
+        # Build Firestore query
+        col = fs.collection("chat_messages")
+        msgs: List[dict] = []
         if session_id:
-            query = {
-                "document_id": document_id,
-                "$or": [
-                    {"session_id": session_id},
-                    {"session_id": "notes_session"},  # Include notes-based messages
-                ],
-            }
+            # Fetch current session
+            for snap in (
+                col.where("document_id", "==", document_id)
+                .where("session_id", "==", session_id)
+                .stream()
+            ):
+                msgs.append(snap.to_dict() or {})
+            # Fetch notes session
+            for snap in (
+                col.where("document_id", "==", document_id)
+                .where("session_id", "==", "notes_session")
+                .stream()
+            ):
+                msgs.append(snap.to_dict() or {})
         else:
-            query = {"document_id": document_id}
+            for snap in col.where("document_id", "==", document_id).stream():
+                msgs.append(snap.to_dict() or {})
 
-        messages = await db.chat_messages.find(query).sort("timestamp", 1).to_list(1000)
+        # Sort by timestamp client-side to avoid composite index requirement
+        msgs.sort(key=lambda m: m.get("timestamp"))
 
-        result = []
-        for msg in messages:
-            msg = convert_mongo_document(msg)
+        result: List[ChatResponse] = []
+        for msg in msgs:
             result.append(
                 ChatResponse(
-                    id=msg["id"],
-                    type=msg["message_type"],
-                    message=msg["message"],
-                    timestamp=msg["timestamp"],
+                    id=msg.get("id", ""),
+                    type=msg.get("message_type", "assistant"),
+                    message=msg.get("message", ""),
+                    timestamp=msg.get("timestamp", datetime.utcnow()),
                 )
             )
 
@@ -438,4 +495,5 @@ logger = logging.getLogger(__name__)
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    # No explicit shutdown needed for Firestore client
+    return
