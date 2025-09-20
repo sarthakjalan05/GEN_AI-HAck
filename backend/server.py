@@ -34,7 +34,7 @@ from document_processor import DocumentProcessor
 from analysis_engine import AnalysisEngine
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / ".env")
+load_dotenv(ROOT_DIR.parent / ".env")
 
 # Firebase Admin / Firestore initialization
 cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")

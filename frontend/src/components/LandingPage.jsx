@@ -186,9 +186,9 @@ const LandingPage = () => {
             documents.
           </p>
           <Link to="/signup">
-            <button className="group relative px-12 py-4 bg-gradient-to-r from-green-500 to-lime-500 text-white font-bold text-lg rounded-full overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-green-500/25">
+            <button className="group relative px-12 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-lg rounded-full overflow-hidden transition-all duration-300 hover:scale-105 hover:shadow-2xl hover:shadow-blue-500/25">
               <span className="relative z-10">Sign Up Now</span>
-              <div className="absolute inset-0 bg-gradient-to-r from-green-600 to-lime-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
           </Link>
         </div>

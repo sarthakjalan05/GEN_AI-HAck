@@ -23,11 +23,11 @@ const Header = () => {
           </Link>
 
           <nav className="hidden md:flex items-center space-x-2">
-            <Link to="/">
+            <Link to="/Dashboard">
               <Button
-                variant={isActive("/") ? "default" : "ghost"}
+                variant={isActive("/Dashboard") ? "default" : "ghost"}
                 className={`flex items-center space-x-2 rounded-full px-6 py-2.5 font-semibold transition-all duration-300 ${
-                  isActive("/")
+                  isActive("/Dashboard ")
                     ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl hover:scale-105"
                     : "hover:bg-gray-100 dark:hover:bg-gray-800 hover:scale-105"
                 }`}

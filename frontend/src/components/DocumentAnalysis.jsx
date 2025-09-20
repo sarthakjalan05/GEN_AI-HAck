@@ -31,6 +31,9 @@ import {
 import api from "../services/api";
 import DocumentChat from "./DocumentChat";
 
+// New import for PDF generation
+import html2pdf from "html2pdf.js";
+
 // Firestore imports
 import { db } from "../firebase";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -38,7 +41,7 @@ import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 // A dummy auth hook to simulate getting a user ID for Firestore
 const useAuth = () => {
   // In a real app, this would get the logged-in user from Firebase Auth context
-  const user = { uid: "test-user-id" }; 
+  const user = { uid: "test-user-id" };
   return { user };
 };
 
@@ -259,7 +262,7 @@ const DocumentAnalysis = () => {
     }
   };
 
-  // Corrected function for export
+  // Corrected function for export to PDF
   const handleExport = () => {
     if (!analysis) {
       toast({
@@ -270,66 +273,78 @@ const DocumentAnalysis = () => {
       return;
     }
 
-    // Combine all relevant analysis data into a formatted string
-    let exportContent = `# Document Analysis Report\n\n`;
-    exportContent += `**Document:** ${document.name}\n`;
-    exportContent += `**Overall Score:** ${analysis.overall_score}/10\n`;
-    exportContent += `**Readability:** ${analysis.readability_score}/10\n`;
-    exportContent += `**Fairness:** ${analysis.fairness_score}/10\n`;
-    exportContent += `**Risk Level:** ${analysis.risk_level}\n\n`;
+    // Combine all relevant analysis data into a formatted HTML string
+    let exportContent = `
+    <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+      <h1 style="color: #1a202c; font-size: 24px;">Document Analysis Report</h1>
+      <p><strong>Document:</strong> ${document.name}</p>
+      <p><strong>Overall Score:</strong> ${analysis.overall_score}/10</p>
+      <p><strong>Readability:</strong> ${analysis.readability_score}/10</p>
+      <p><strong>Fairness:</strong> ${analysis.fairness_score}/10</p>
+      <p><strong>Risk Level:</strong> ${analysis.risk_level}</p>
+      <br>
 
-    // Add Summary
-    exportContent += `## Summary\n`;
-    exportContent += `${analysis.summary}\n\n`;
+      <h2 style="color: #2d3748; font-size: 20px;">Summary</h2>
+      <p>${analysis.summary}</p>
+      <br>
+    `;
 
     // Add Top Concerns
     if (analysis.top_concerns && analysis.top_concerns.length > 0) {
-      exportContent += `## Top Concerns\n`;
-      analysis.top_concerns.forEach((concern) => {
-        exportContent += `* ${concern}\n`;
-      });
-      exportContent += "\n";
+      exportContent += `
+        <h2 style="color: #2d3748; font-size: 20px;">Top Concerns</h2>
+        <ul>
+          ${analysis.top_concerns.map((concern) => `<li>${concern}</li>`).join("")}
+        </ul>
+        <br>
+      `;
     }
 
     // Add Recommendations
     if (analysis.recommendations && analysis.recommendations.length > 0) {
-      exportContent += `## Recommendations\n`;
-      analysis.recommendations.forEach((rec) => {
-        exportContent += `* ${rec}\n`;
-      });
-      exportContent += "\n";
+      exportContent += `
+        <h2 style="color: #2d3748; font-size: 20px;">Recommendations</h2>
+        <ul>
+          ${analysis.recommendations.map((rec) => `<li>${rec}</li>`).join("")}
+        </ul>
+        <br>
+      `;
     }
 
     // Add Key Terms
     if (analysis.key_terms_markdown) {
-      exportContent += `## Key Terms\n`;
-      exportContent += `${analysis.key_terms_markdown}\n\n`;
+      exportContent += `
+        <h2 style="color: #2d3748; font-size: 20px;">Key Terms</h2>
+        <div style="font-size: 14px;">${parseMarkdown(analysis.key_terms_markdown)}</div>
+        <br>
+      `;
     }
 
     // Add Risks
     if (analysis.risks_markdown) {
-      exportContent += `## Risks\n`;
-      exportContent += `${analysis.risks_markdown}\n\n`;
+      exportContent += `
+        <h2 style="color: #2d3748; font-size: 20px;">Risks</h2>
+        <div style="font-size: 14px;">${parseMarkdown(analysis.risks_markdown)}</div>
+      `;
     }
 
-    // Create a Blob from the content
-    const blob = new Blob([exportContent], { type: 'text/plain;charset=utf-8' });
-    const href = URL.createObjectURL(blob);
+    exportContent += `</div>`;
 
-    // Create and click a temporary link to download the file
-    const link = window.document.createElement('a');
-    link.href = href;
-    link.download = `${document.name}_analysis.md`;
-    window.document.body.appendChild(link);
-    link.click();
+    // Options for html2pdf
+    const exportOptions = {
+        margin: 10,
+        filename: `${document.name}_analysis.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
 
-    // Clean up the temporary link and URL
-    window.document.body.removeChild(link);
-    URL.revokeObjectURL(href);
+    // Use html2pdf to generate and download the PDF
+    html2pdf().from(exportContent).set(exportOptions).save();
 
     toast({
       title: "Export Successful",
-      description: "Analysis summary downloaded to your machine.",
+      description: "Analysis summary downloaded as a PDF.",
     });
   };
 
