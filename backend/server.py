@@ -135,6 +135,20 @@ async def analyze_document_task(document_id: str, text: str, document_type: str)
 
 
 # Routes
+@app.get("/")
+async def base_root():
+    return {
+        "message": "LegalClear API is running",
+        "docs_url": "/docs",
+        "api_base": "/api/",
+    }
+
+
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}
+
+
 @api_router.get("/")
 async def root():
     return {"message": "LegalClear API is running"}

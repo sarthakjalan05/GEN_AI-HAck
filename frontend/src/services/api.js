@@ -1,6 +1,10 @@
-import axios from 'axios';
+import axios from "axios";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+// Normalize base URL to avoid double slashes regardless of trailing slash in env
+const rawBackendUrl = process.env.REACT_APP_BACKEND_URL || "";
+const BACKEND_URL = rawBackendUrl.endsWith("/")
+  ? rawBackendUrl.slice(0, -1)
+  : rawBackendUrl;
 const API = `${BACKEND_URL}/api`;
 
 // Create axios instance with default config
@@ -16,7 +20,7 @@ apiClient.interceptors.request.use(
     return config;
   },
   (error) => {
-    console.error('API Request Error:', error);
+    console.error("API Request Error:", error);
     return Promise.reject(error);
   }
 );
@@ -28,17 +32,17 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Response Error:', error.response?.data || error.message);
-    
+    console.error("API Response Error:", error.response?.data || error.message);
+
     // Handle specific error cases
     if (error.response?.status === 404) {
-      throw new Error('Resource not found');
+      throw new Error("Resource not found");
     } else if (error.response?.status === 400) {
-      throw new Error(error.response.data?.detail || 'Bad request');
+      throw new Error(error.response.data?.detail || "Bad request");
     } else if (error.response?.status >= 500) {
-      throw new Error('Server error. Please try again later.');
+      throw new Error("Server error. Please try again later.");
     }
-    
+
     throw error;
   }
 );
@@ -46,26 +50,26 @@ apiClient.interceptors.response.use(
 // Document API functions
 export const documentAPI = {
   // Upload a document
-  uploadDocument: async (file, documentName, documentType, notes = '') => {
+  uploadDocument: async (file, documentName, documentType, notes = "") => {
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('document_name', documentName);
-    formData.append('document_type', documentType);
-    formData.append('notes', notes);
+    formData.append("file", file);
+    formData.append("document_name", documentName);
+    formData.append("document_type", documentType);
+    formData.append("notes", notes);
 
-    const response = await apiClient.post('/documents/upload', formData, {
+    const response = await apiClient.post("/documents/upload", formData, {
       headers: {
-        'Content-Type': 'multipart/form-data',
+        "Content-Type": "multipart/form-data",
       },
       timeout: 60000, // 60 seconds for file upload
     });
-    
+
     return response.data;
   },
 
   // Get all documents
   getDocuments: async () => {
-    const response = await apiClient.get('/documents');
+    const response = await apiClient.get("/documents");
     return response.data;
   },
 
@@ -102,7 +106,9 @@ export const chatAPI = {
   // Get chat history
   getChatHistory: async (documentId, sessionId = null) => {
     const params = sessionId ? { session_id: sessionId } : {};
-    const response = await apiClient.get(`/documents/${documentId}/chat`, { params });
+    const response = await apiClient.get(`/documents/${documentId}/chat`, {
+      params,
+    });
     return response.data;
   },
 };
@@ -110,7 +116,11 @@ export const chatAPI = {
 // Health check
 export const healthAPI = {
   check: async () => {
-    const response = await apiClient.get('/');
+    // Our backend exposes /healthz at the root; since baseURL already includes /api,
+    // call the absolute path to bypass the /api prefix for health checks.
+    const response = await axios.get(`${BACKEND_URL}/healthz`, {
+      timeout: 10000,
+    });
     return response.data;
   },
 };
