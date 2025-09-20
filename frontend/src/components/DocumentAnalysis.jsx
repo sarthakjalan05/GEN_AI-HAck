@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import {
   Card,
@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   MessageCircle,
   Send,
-  Mic,
   Download,
   Bookmark,
   Share2,
@@ -87,13 +86,7 @@ const FormattedMessage = ({ content }) => {
   return (
     <div
       dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
-      className="formatted-message text-gray-700 dark:text-white leading-relaxed"
-      style={{
-        background: "none",
-        color: "inherit",
-        WebkitTextStroke: "0.2px",
-        textShadow: "0 1px 2px rgba(0,0,0,0.08)",
-      }}
+      className="formatted-message text-gray-700 dark:text-gray-300 leading-relaxed"
     />
   );
 };
@@ -105,17 +98,10 @@ const DocumentAnalysis = () => {
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
-  const [listening, setListening] = useState(false);
   const [document, setDocument] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
-  // Speech recognition support detection (guard for SSR)
-  const SpeechRecognition =
-    typeof window !== "undefined"
-      ? window.SpeechRecognition || window.webkitSpeechRecognition || null
-      : null;
-  const recognitionRef = useRef(null);
 
   // Generate session ID for chat
   const [sessionId] = useState(() => {
@@ -191,7 +177,7 @@ const DocumentAnalysis = () => {
         clearInterval(pollInterval);
       }
     };
-  }, [document, analysis, id, toast]);
+  }, [document, analysis, id, toast, user]);
 
   const fetchDocumentData = async () => {
     try {
@@ -271,6 +257,80 @@ const DocumentAnalysis = () => {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  // Corrected function for export
+  const handleExport = () => {
+    if (!analysis) {
+      toast({
+        title: "Analysis Not Ready",
+        description: "Please wait for the analysis to complete before exporting.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Combine all relevant analysis data into a formatted string
+    let exportContent = `# Document Analysis Report\n\n`;
+    exportContent += `**Document:** ${document.name}\n`;
+    exportContent += `**Overall Score:** ${analysis.overall_score}/10\n`;
+    exportContent += `**Readability:** ${analysis.readability_score}/10\n`;
+    exportContent += `**Fairness:** ${analysis.fairness_score}/10\n`;
+    exportContent += `**Risk Level:** ${analysis.risk_level}\n\n`;
+
+    // Add Summary
+    exportContent += `## Summary\n`;
+    exportContent += `${analysis.summary}\n\n`;
+
+    // Add Top Concerns
+    if (analysis.top_concerns && analysis.top_concerns.length > 0) {
+      exportContent += `## Top Concerns\n`;
+      analysis.top_concerns.forEach((concern) => {
+        exportContent += `* ${concern}\n`;
+      });
+      exportContent += "\n";
+    }
+
+    // Add Recommendations
+    if (analysis.recommendations && analysis.recommendations.length > 0) {
+      exportContent += `## Recommendations\n`;
+      analysis.recommendations.forEach((rec) => {
+        exportContent += `* ${rec}\n`;
+      });
+      exportContent += "\n";
+    }
+
+    // Add Key Terms
+    if (analysis.key_terms_markdown) {
+      exportContent += `## Key Terms\n`;
+      exportContent += `${analysis.key_terms_markdown}\n\n`;
+    }
+
+    // Add Risks
+    if (analysis.risks_markdown) {
+      exportContent += `## Risks\n`;
+      exportContent += `${analysis.risks_markdown}\n\n`;
+    }
+
+    // Create a Blob from the content
+    const blob = new Blob([exportContent], { type: 'text/plain;charset=utf-8' });
+    const href = URL.createObjectURL(blob);
+
+    // Create and click a temporary link to download the file
+    const link = window.document.createElement('a');
+    link.href = href;
+    link.download = `${document.name}_analysis.md`;
+    window.document.body.appendChild(link);
+    link.click();
+
+    // Clean up the temporary link and URL
+    window.document.body.removeChild(link);
+    URL.revokeObjectURL(href);
+
+    toast({
+      title: "Export Successful",
+      description: "Analysis summary downloaded to your machine.",
+    });
   };
 
   const getRiskColor = (level) => {
@@ -526,8 +586,8 @@ const DocumentAnalysis = () => {
 
             <TabsContent value="terms" className="space-y-4">
               {analysis?.key_terms_markdown ? (
-                <Card className="bg-white dark:bg-gray-800/95">
-                  <CardContent className="p-4 text-gray-700 dark:text-white">
+                <Card>
+                  <CardContent className="p-4">
                     <FormattedMessage content={analysis.key_terms_markdown} />
                   </CardContent>
                 </Card>
@@ -538,9 +598,9 @@ const DocumentAnalysis = () => {
                       key={index}
                       className={`border-l-4 ${getImportanceColor(
                         term.importance
-                      )} bg-white dark:bg-gray-800/95`}
+                      )}`}
                     >
-                      <CardContent className="p-4 text-gray-700 dark:text-white">
+                      <CardContent className="p-4">
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-semibold text-gray-900 dark:text-gray-100">
                             {term.term}
@@ -557,9 +617,9 @@ const DocumentAnalysis = () => {
                             </span>
                           </div>
                         </div>
-                        <div className="text-sm text-gray-700 dark:text-white leading-relaxed">
+                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                           <FormattedMessage content={term.definition} />
-                        </div>
+                        </p>
                       </CardContent>
                     </Card>
                   ))}
@@ -707,48 +767,11 @@ const DocumentAnalysis = () => {
                 <Input
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
-                  placeholder={
-                    listening
-                      ? "Legal assistant is listening to you..."
-                      : "Ask about your document..."
-                  }
+                  placeholder="Ask about your document..."
                   onKeyPress={handleKeyPress}
                   disabled={chatLoading}
                   className="flex-1"
                 />
-                {/* Mic button for voice input */}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleMicClick}
-                  disabled={chatLoading || !SpeechRecognition}
-                  className={`inline-flex items-center justify-center rounded-md px-3 shadow border ${
-                    !SpeechRecognition
-                      ? "bg-gray-200 text-gray-500 dark:bg-gray-800 dark:text-gray-500 cursor-not-allowed"
-                      : listening
-                      ? "border-red-300 bg-red-50 text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300 animate-pulse"
-                      : "border-gray-300 bg-white text-gray-900 hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100 dark:hover:bg-gray-800"
-                  }`}
-                  aria-label={
-                    listening ? "Stop listening" : "Start voice input"
-                  }
-                  title={
-                    !SpeechRecognition
-                      ? "Voice input not supported in this browser"
-                      : listening
-                      ? "Click to stop listening"
-                      : "Click to start voice input"
-                  }
-                >
-                  <Mic
-                    className={`h-4 w-4 ${
-                      listening
-                        ? "text-red-600 dark:text-red-300"
-                        : "text-gray-700 dark:text-gray-200"
-                    }`}
-                  />
-                </Button>
                 <Button
                   size="sm"
                   onClick={handleSendMessage}
@@ -761,11 +784,6 @@ const DocumentAnalysis = () => {
                   )}
                 </Button>
               </div>
-              {!SpeechRecognition && (
-                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 border border-yellow-300 dark:border-yellow-800 rounded px-2 py-1 mt-2">
-                  Voice input is not supported in this browser.
-                </div>
-              )}
             </CardContent>
           </Card>
 
