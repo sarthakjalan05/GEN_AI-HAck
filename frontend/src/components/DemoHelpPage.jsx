@@ -181,17 +181,16 @@ const DemoHelpPage = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {/* Video Container - Leave empty for Google Drive link */}
-              <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center border-2 border-dashed border-gray-300 dark:border-gray-600">
-                <div className="text-center p-8">
-                  <Video className="h-16 w-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-gray-400 font-medium">
-                    Demo Video Will Be Embedded Here
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
-                    Google Drive video link placeholder
-                  </p>
-                </div>
+              {/* Video Container with Google Drive Embed */}
+              <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-xl overflow-hidden shadow-lg">
+                <iframe
+                  src="https://drive.google.com/file/d/1RRmuF7PnOLKA_h885mYpH1aT3zEIN7KJ/preview"
+                  width="100%"
+                  height="100%"
+                  allow="autoplay"
+                  className="rounded-xl"
+                  title="LegalClear Demo Video"
+                ></iframe>
               </div>
 
               {/* Video Details */}
