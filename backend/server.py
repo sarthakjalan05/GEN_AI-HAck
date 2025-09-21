@@ -36,17 +36,36 @@ from analysis_engine import AnalysisEngine
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR.parent / ".env")
 
-# Firebase Admin / Firestore initialization
-cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-if not firebase_admin._apps:
-    if cred_path and os.path.exists(cred_path):
-        cred = credentials.Certificate(cred_path)
-        firebase_admin.initialize_app(cred)
-    else:
-        # Attempt to initialize with default credentials (ADC)
-        firebase_admin.initialize_app()
+# Firebase Admin / Firestore initialization (non-fatal)
+INIT_ERROR: Optional[str] = None
+fs = None
+FIRESTORE_PROJECT = os.environ.get("FIRESTORE_PROJECT_ID") or os.environ.get(
+    "GOOGLE_CLOUD_PROJECT"
+)
+try:
+    # Prefer ADC on Cloud Run. If GOOGLE_APPLICATION_CREDENTIALS is set but missing,
+    # unset it to avoid startup failure.
+    cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if cred_path and not os.path.exists(cred_path):
+        os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
 
-fs = firestore.client()
+    # Prepare app options for cross-project override if provided
+    app_options = {"projectId": FIRESTORE_PROJECT} if FIRESTORE_PROJECT else None
+
+    if not firebase_admin._apps:
+        cred_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        if cred_path and os.path.exists(cred_path):
+            cred = credentials.Certificate(cred_path)
+            firebase_admin.initialize_app(cred, options=app_options)
+        else:
+            # Use ADC; options will set the target project if provided
+            firebase_admin.initialize_app(options=app_options)
+
+    # Create Firestore client (project is derived from initialized app options/ADC)
+    fs = firestore.client()
+except Exception as e:
+    INIT_ERROR = f"Firestore init failed: {e}"
+    # Defer failures to request time; app will still boot for / and /healthz
 
 # Initialize processors
 doc_processor = DocumentProcessor()
@@ -61,18 +80,26 @@ api_router = APIRouter(prefix="/api")
 
 # Firestore helpers
 def fs_set(collection: str, doc_id: str, data: dict):
+    if fs is None:
+        raise HTTPException(status_code=503, detail="Firestore not initialized")
     fs.collection(collection).document(doc_id).set(data)
 
 
 def fs_update(collection: str, doc_id: str, data: dict):
+    if fs is None:
+        raise HTTPException(status_code=503, detail="Firestore not initialized")
     fs.collection(collection).document(doc_id).update(data)
 
 
 def fs_get_doc(collection: str, doc_id: str):
+    if fs is None:
+        raise HTTPException(status_code=503, detail="Firestore not initialized")
     return fs.collection(collection).document(doc_id).get()
 
 
 def fs_delete(collection: str, doc_id: str):
+    if fs is None:
+        raise HTTPException(status_code=503, detail="Firestore not initialized")
     fs.collection(collection).document(doc_id).delete()
 
 
@@ -146,12 +173,31 @@ async def base_root():
 
 @app.get("/healthz")
 async def healthz():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "firestore_ready": fs is not None,
+        "firestore_project": FIRESTORE_PROJECT or "(default)",
+        "init_error": INIT_ERROR or "",
+    }
 
 
 @api_router.get("/")
 async def root():
     return {"message": "LegalClear API is running"}
+
+
+@api_router.get("/diagnostics")
+async def diagnostics():
+    return {
+        "firestore_project": FIRESTORE_PROJECT or "(default)",
+        "firestore_ready": fs is not None,
+        "init_error": INIT_ERROR or "",
+        "env": {
+            "GEMINI_API_KEY_present": bool(os.environ.get("GEMINI_API_KEY")),
+            "GOOGLE_CLOUD_PROJECT": os.environ.get("GOOGLE_CLOUD_PROJECT", ""),
+            "FIRESTORE_PROJECT_ID": os.environ.get("FIRESTORE_PROJECT_ID", ""),
+        },
+    }
 
 
 # Document endpoints

@@ -29,8 +29,9 @@ COPY backend /app/backend
 # Set working dir to backend so module imports like `from models import ...` work
 WORKDIR /app/backend
 
-# Point Firebase Admin to the bundled service account JSON inside the image
-ENV GOOGLE_APPLICATION_CREDENTIALS=/app/backend/Google_Application_Credentials.json
+# Do NOT set GOOGLE_APPLICATION_CREDENTIALS here. Cloud Run will use
+# Application Default Credentials (ADC) from the service account.
+# If you really need to use a JSON key locally, pass it at runtime only.
 
 # Expose the port (Cloud Run will set $PORT)
 EXPOSE 8080

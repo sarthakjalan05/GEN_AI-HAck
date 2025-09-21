@@ -70,12 +70,15 @@ const parseMarkdown = (text) => {
   if (!text) return text;
 
   // Convert **text** to bold
-  let formatted = text.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+  let formatted = text.replace(
+    /\*\*(.+?)\*\*/g,
+    "<strong class='font-semibold text-gray-900 dark:text-gray-100'>$1</strong>"
+  );
 
   // Convert *text* to italic
   formatted = formatted.replace(
     /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,
-    "<em>$1</em>"
+    "<em class='italic text-gray-800 dark:text-gray-200'>$1</em>"
   );
 
   // Convert line breaks
@@ -89,7 +92,7 @@ const FormattedMessage = ({ content }) => {
   return (
     <div
       dangerouslySetInnerHTML={{ __html: parseMarkdown(content) }}
-      className="formatted-message text-gray-700 dark:text-gray-300 leading-relaxed"
+      className="formatted-message text-gray-700 dark:text-gray-300 leading-relaxed prose prose-gray dark:prose-invert prose-sm max-w-none"
     />
   );
 };
@@ -267,7 +270,8 @@ const DocumentAnalysis = () => {
     if (!analysis) {
       toast({
         title: "Analysis Not Ready",
-        description: "Please wait for the analysis to complete before exporting.",
+        description:
+          "Please wait for the analysis to complete before exporting.",
         variant: "destructive",
       });
       return;
@@ -294,7 +298,9 @@ const DocumentAnalysis = () => {
       exportContent += `
         <h2 style="color: #2d3748; font-size: 20px;">Top Concerns</h2>
         <ul>
-          ${analysis.top_concerns.map((concern) => `<li>${concern}</li>`).join("")}
+          ${analysis.top_concerns
+            .map((concern) => `<li>${concern}</li>`)
+            .join("")}
         </ul>
         <br>
       `;
@@ -315,7 +321,9 @@ const DocumentAnalysis = () => {
     if (analysis.key_terms_markdown) {
       exportContent += `
         <h2 style="color: #2d3748; font-size: 20px;">Key Terms</h2>
-        <div style="font-size: 14px;">${parseMarkdown(analysis.key_terms_markdown)}</div>
+        <div style="font-size: 14px;">${parseMarkdown(
+          analysis.key_terms_markdown
+        )}</div>
         <br>
       `;
     }
@@ -324,7 +332,9 @@ const DocumentAnalysis = () => {
     if (analysis.risks_markdown) {
       exportContent += `
         <h2 style="color: #2d3748; font-size: 20px;">Risks</h2>
-        <div style="font-size: 14px;">${parseMarkdown(analysis.risks_markdown)}</div>
+        <div style="font-size: 14px;">${parseMarkdown(
+          analysis.risks_markdown
+        )}</div>
       `;
     }
 
@@ -332,11 +342,11 @@ const DocumentAnalysis = () => {
 
     // Options for html2pdf
     const exportOptions = {
-        margin: 10,
-        filename: `${document.name}_analysis.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      margin: 10,
+      filename: `${document.name}_analysis.pdf`,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
     };
 
     // Use html2pdf to generate and download the PDF
@@ -431,7 +441,12 @@ const DocumentAnalysis = () => {
             <Share2 className="h-4 w-4 mr-2" />
             Share
           </Button>
-          <Button variant="outline" size="sm" onClick={handleExport} disabled={!analysis}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            disabled={!analysis}
+          >
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
@@ -602,7 +617,7 @@ const DocumentAnalysis = () => {
             <TabsContent value="terms" className="space-y-4">
               {analysis?.key_terms_markdown ? (
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 text-gray-900 dark:text-gray-100">
                     <FormattedMessage content={analysis.key_terms_markdown} />
                   </CardContent>
                 </Card>
@@ -653,7 +668,7 @@ const DocumentAnalysis = () => {
             <TabsContent value="risks" className="space-y-4">
               {analysis?.risks_markdown ? (
                 <Card>
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 text-gray-900 dark:text-gray-100">
                     <FormattedMessage content={analysis.risks_markdown} />
                   </CardContent>
                 </Card>
@@ -750,8 +765,8 @@ const DocumentAnalysis = () => {
                       <div
                         className={`max-w-[85%] p-3 rounded-lg text-sm ${
                           msg.type === "user"
-                            ? "bg-slate-900 text-white"
-                            : "bg-gray-100 text-gray-900"
+                            ? "bg-slate-900 text-white dark:bg-slate-700"
+                            : "bg-gray-100 text-gray-900 dark:bg-gray-700 dark:text-gray-100"
                         }`}
                         style={{
                           wordBreak: "break-word",

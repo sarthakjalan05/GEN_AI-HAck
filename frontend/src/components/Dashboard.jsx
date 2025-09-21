@@ -64,7 +64,7 @@ const Dashboard = () => {
       }
 
       const summaryData = summaryDoc.data();
-      
+
       let exportContent = `# Document Analysis Report\n\n`;
       exportContent += `**Document:** ${documentName}\n`;
       exportContent += `**Overall Score:** ${summaryData.overall_score}/10\n`;
@@ -77,11 +77,13 @@ const Dashboard = () => {
       }
 
       // Create a Blob from the content
-      const blob = new Blob([exportContent], { type: 'text/plain;charset=utf-8' });
+      const blob = new Blob([exportContent], {
+        type: "text/plain;charset=utf-8",
+      });
       const href = URL.createObjectURL(blob);
-      
+
       // The fix is here: use window.document to access the global object
-      const link = window.document.createElement('a');
+      const link = window.document.createElement("a");
       link.href = href;
       link.download = `${documentName}_summary.md`;
       window.document.body.appendChild(link);
@@ -93,7 +95,6 @@ const Dashboard = () => {
         title: "Download Successful",
         description: `Summary for '${documentName}' has been downloaded.`,
       });
-
     } catch (error) {
       console.error("Error downloading summary:", error);
       toast({
@@ -172,13 +173,15 @@ const Dashboard = () => {
                 Upload Your First Document
               </Button>
             </Link>
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 px-8 py-4 rounded-full"
-            >
-              Watch Demo
-            </Button>
+            <Link to="/demo">
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 px-8 py-4 rounded-full"
+              >
+                Watch Demo
+              </Button>
+            </Link>
           </div>
         </div>
       </section>

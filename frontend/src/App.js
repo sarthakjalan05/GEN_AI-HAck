@@ -10,6 +10,7 @@ import LandingPage from "./components/LandingPage";
 import Footer from "./components/Footer";
 import LoginPage from "./components/LoginPage"; // Import the new Login Page
 import SignupPage from "./components/SignupPage"; // Import the new Signup Page
+import DemoHelpPage from "./components/DemoHelpPage"; // Import the new Demo/Help Page
 
 function App() {
   return (
@@ -24,6 +25,8 @@ function App() {
             <Route path="/document/:id" element={<DocumentAnalysis />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/demo" element={<DemoHelpPage />} />
+            <Route path="/help" element={<DemoHelpPage />} />
           </Routes>
         </main>
         <Footer />

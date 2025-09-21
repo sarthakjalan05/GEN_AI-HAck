@@ -52,14 +52,16 @@ const Header = () => {
           </nav>
 
           <div className="flex items-center space-x-3">
-            <Button
-              variant="outline"
-              size="sm"
-              className="rounded-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 hover:scale-105 shadow-sm hover:shadow-md"
-            >
-              <FileSearch className="h-4 w-4 mr-2" />
-              Get Help
-            </Button>
+            <Link to="/help">
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-full px-4 py-2 border-2 border-gray-300 dark:border-gray-600 hover:border-blue-500 dark:hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all duration-300 hover:scale-105 shadow-sm hover:shadow-md"
+              >
+                <FileSearch className="h-4 w-4 mr-2" />
+                Get Help
+              </Button>
+            </Link>
             <ThemeToggle />
           </div>
         </div>
